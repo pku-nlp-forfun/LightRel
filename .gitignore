@@ -6,3 +6,14 @@ SemEval18task7/models/libLinearInput_test.txt
 SemEval18task7/models/libLinearInput_train.txt
 SemEval18task7/results/*
 SemEval18task7/features/record_*.txt
+
+# feature
+*.wcs.txt
+*.vec
+feature
+features
+
+# model
+*.model
+model
+models
