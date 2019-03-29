@@ -6,9 +6,12 @@ try:
 except ImportError:
     import xml.etree.ElementTree as ET
 import re
+from typing import Tuple, List, Dict
 
 
-def create_relation_index(rel_path):
+def create_relation_index(rel_path: str) -> Dict:
+    # @return dict key: title_name value: (e1, e2): [relation, reverse]
+    # @example 'H01-1001': {('H01-1001.5', 'H01-1001.7'): ['USAGE', True]}
     rel_idx = {}
     typ_pattern = r'[^(]*'
     rel_pattern = r'\((.*?)\)'
@@ -31,7 +34,7 @@ def create_relation_index(rel_path):
     return rel_idx
 
 
-def collect_texts(dat_file):
+def collect_texts(dat_file: str) -> Tuple[dict, dict]:
     txt_idx, ent_idx = {}, {}
     tree = ET.parse(dat_file)
     doc = tree.getroot()
@@ -52,7 +55,8 @@ def collect_texts(dat_file):
                     ent_id = el.get('id')
                     # ent_text = el.text
                     ent_text = ''.join(e for e in el.itertext() if e)
-                    ent_idx[ent_id] = ent_text  # collect id to entity mapping to be used later
+                    # collect id to entity mapping to be used later
+                    ent_idx[ent_id] = ent_text
                     ent_tail = el.tail
                     if ent_tail:
                         if ent_tail[0] == ' ':
@@ -66,7 +70,11 @@ def collect_texts(dat_file):
     return txt_idx, ent_idx
 
 
-def create_record(txts, rel_idx, ent_idx):
+def create_record(txts, rel_idx: dict, ent_idx: dict) -> List[tuple]:
+    """
+    @return list(tuple) (title, [sentents], e1, e2, label)
+    @example('H01-1001', ['information_retrieval_techniques','use','a','histogram','of','keywords'],'H01-1001.5','H01-1001.7','USAGE REVERSE',6)
+    """
     recs = []
 
     for abs_id, rels in rel_idx.items():
@@ -76,10 +84,13 @@ def create_record(txts, rel_idx, ent_idx):
             rel_text_between = re.findall(rel_patt, txts[abs_id])[0]
             rel_text_full = e1 + rel_text_between + e2
             tokens = rel_text_full.split()
-            for i, token in enumerate(tokens):  # replace entity ids with actual entities
+            # replace entity ids with actual entities
+            for i, token in enumerate(tokens):
                 if token in ent_idx:
-                    if i == 0 or i == len(tokens)-1:  # if entity in relation, join with underscores if multi-word
-                        tokens[i] = '_'.join(toke for toke in ent_idx[token].split())
+                    # if entity in relation, join with underscores if multi-word
+                    if i == 0 or i == len(tokens)-1:
+                        tokens[i] = '_'.join(
+                            toke for toke in ent_idx[token].split())
                     else:
                         tokens[i] = ent_idx[token]
             tokens_with_punc = list(merge_punc(tokens))
@@ -90,7 +101,8 @@ def create_record(txts, rel_idx, ent_idx):
     return recs
 
 
-def merge_punc(tkn_lst):
+# Generator
+def merge_punc(tkn_lst: list):
     to_merge = {',', '.', ':', ';'}
     seq = iter(tkn_lst)
     curr = next(seq)
@@ -103,22 +115,22 @@ def merge_punc(tkn_lst):
     yield curr
 
 
-def write_record(rec_out, recs):
+# Without sorted
+def write_record(rec_out: str, recs: list):
     # used for writing internal python containers to file
     with open(rec_out, 'w+') as out:
-        for rec in recs:
-            out.write(str(rec) + '\n')
+        out.write('\n'.join([str(ii) for ii in recs]))
 
 
-def index_uniques(uni_out, uniqs):
+# Sorted
+def index_uniques(uni_out: str, uniqs: list):
     # used for writing unique info already in string format to file
     with open(uni_out, 'w+') as voc:
-        for uniq in sorted(uniqs):
-            voc.write(uniq + '\n')
+        voc.write('\n'.join([str(ii) for ii in sorted(uniqs)]))
 
 
 if __name__ == '__main__':
-    folds = int(sys.argv[1])
+    folds = int(sys.argv[1])  # flod num for cross validation
     # input files
     path_to_relations = data_dir + task_number + '.relations.txt'
     path_to_test_relations = data_dir + 'keys.test.' + task_number + '.txt'
@@ -135,19 +147,25 @@ if __name__ == '__main__':
 
     training_relation_index = create_relation_index(path_to_relations)
     test_relation_index = create_relation_index(path_to_test_relations)
-    training_text_index, training_entity_index = collect_texts(path_to_train_data)
+    training_text_index, training_entity_index = collect_texts(
+        path_to_train_data)
     test_text_index, test_entity_index = collect_texts(path_to_test_data)
-    training_records = create_record(training_text_index, training_relation_index, training_entity_index)
+    training_records = create_record(
+        training_text_index, training_relation_index, training_entity_index)
     unique_test_words, unique_test_context_e1, unique_test_context_e2 = set(), set(), set()
 
     if folds == 0:
         # competition run
-        test_records = create_record(test_text_index, test_relation_index, test_entity_index)
+        test_records = create_record(
+            test_text_index, test_relation_index, test_entity_index)
         write_record(train_record_file, training_records)
         write_record(test_record_file, test_records)
-        unique_test_words = set([word for rec in test_records for word in rec[1]])
-        unique_test_context_e1 = set([r[1][1] for r in test_records if len(r) >= 3])
-        unique_test_context_e2 = set([r[1][-2] for r in test_records if len(r) >= 3])
+        unique_test_words = set(
+            [word for rec in test_records for word in rec[1]])
+        unique_test_context_e1 = set([r[1][1]
+                                      for r in test_records if len(r) >= 3])
+        unique_test_context_e2 = set([r[1][-2]
+                                      for r in test_records if len(r) >= 3])
 
     else:
         # cross-val development
@@ -156,25 +174,33 @@ if __name__ == '__main__':
             test_start = int(test_size * (k-1))
             test_end = int(test_size * k)
             cv_test_split = training_records[test_start:test_end]
-            cv_train_split = training_records[:test_start] + training_records[test_end:]
+            cv_train_split = training_records[:test_start] + \
+                training_records[test_end:]
             cv_test_output = features_dir + 'record_test' + str(k) + '.txt'
             cv_train_output = features_dir + 'record_train' + str(k) + '.txt'
             write_record(cv_test_output, cv_test_split)
             write_record(cv_train_output, cv_train_split)
 
     # collect unique words and entity context from training data
-    unique_training_words = set([word for rec in training_records for word in rec[1]])
-    unique_training_context_e1 = set([r[1][1] for r in training_records if len(r) >= 3])
-    unique_training_context_e2 = set([r[1][-2] for r in training_records if len(r) >= 3])
+    unique_training_words = set(
+        [word for rec in training_records for word in rec[1]])
+    unique_training_context_e1 = set(
+        [r[1][1] for r in training_records if len(r) >= 3])
+    unique_training_context_e2 = set(
+        [r[1][-2] for r in training_records if len(r) >= 3])
     # add unique words and entity context from test data
     unique_words = unique_training_words.union(unique_test_words)
-    unique_context_e1 = unique_training_context_e1.union(unique_test_context_e1)
-    unique_context_e2 = unique_training_context_e2.union(unique_test_context_e2)
+    unique_context_e1 = unique_training_context_e1.union(
+        unique_test_context_e1)
+    unique_context_e2 = unique_training_context_e2.union(
+        unique_test_context_e2)
     unique_labels = {r[4] for r in training_records}
-    num_shape_dims = 7 # change according to number of shape features
+    num_shape_dims = 7  # change according to number of shape features
     unique_shapes = list(itertools.product(range(2), repeat=num_shape_dims))
-    index_uniques(vocab_output, unique_words)
-    index_uniques(label_output, unique_labels)
-    index_uniques(e1_context_output, unique_context_e1)
-    index_uniques(e2_context_output, unique_context_e2)
-    write_record(shapes_output, unique_shapes)
+
+    # load data to file
+    index_uniques(vocab_output, unique_words)            # features/vocab.txt
+    index_uniques(label_output, unique_labels)           # features/labels.txt
+    index_uniques(e1_context_output, unique_context_e1)  # follow entity1
+    index_uniques(e2_context_output, unique_context_e2)  # before entity2
+    write_record(shapes_output, unique_shapes)           # shape(0, 0, 0, 0)
