@@ -1,5 +1,6 @@
 import ast
 import sys
+import numpy as np
 
 from parameters import *
 from util import *
@@ -35,11 +36,10 @@ def read_embeddings(file):
     with open(file, encoding="ISO-8859-1") as f:
         for line in f:
             split = line.strip().split()
-            if len(split) == 2:
+            if len(split) != 1025 and len(split) != 301:
                 continue
             else:
-                word, vect = ' '.join(split[:-300]), [float(val)
-                                                      for val in split[-300:]]  # -300 due to # of dims
+                word, vect = split[0], [float(val) for val in split[1:]]
                 embs[word] = vect
     return embs
 
@@ -83,19 +83,22 @@ if __name__ == '__main__':
     record_file = features_dir + 'record.txt'
     vocab_file = features_dir + 'vocab.txt'
     shapes_file = features_dir + 'shapes.txt'
-    label_file = features_dir + 'labels.txt'
     e1_context_file = features_dir + 'e1_context.txt'
     e2_context_file = features_dir + 'e2_context.txt'
     abstracts_file = features_dir + 'abstracts.txt'
-    # word_embds_file = features_dir + 'word2vec_abstracts.wcs.txt'
-    # word_embds_file = features_dir + 'word2vec_abstracts1.wcs.txt'  # dblp
-    word_embds_file = features_dir + 'dblp_abstracts.wcs.txt'  # dblp v10
-    # word_embds_file = features_dir + 'fasttxt.v5100.vec'  # dblp v5 fasttxt
-    # word_embds_file = features_dir + 'abstracts-dblp-semeval2018.wcs.txt'
+    # word_embds_file = features_dir + 'abstracts-dblp-semeval2018.wcs.txt'  # origin
+    # word_embds_file = features_dir + 'word2vec_abstracts.wcs.txt'  # acm + bdlp v10
+    # word_embds_file = features_dir + 'word2vec_abstracts1.wcs.txt'  # dblp v5
+    # word_embds_file = features_dir + 'dblp_abstracts.wcs.txt'  # dblp v10
+    word_embds_file = features_dir + 'fasttext_v5.txt'  # fasttext dblp v5
+    # word_embds_file = features_dir + 'fasttext_acm.txt'  # fasttext dblp acm
+    # word_embds_file = features_dir + 'fasttext_v10.txt'  # fasttext dblp v10
+    # word_embds_file = features_dir + 'bert_acm.txt'  # bert acm test
 
     cluster_file = features_dir + 'dblp_marlin_clusters_1000'
-    # word_embds_file = features_dir + 'acm_abstracts.wcs.txt'
     # cluster_file = features_dir + 'acm_marlin_clusters_1000'
+    # word_embds_file = features_dir + 'acm_abstracts.wcs.txt'
+
     unknown = 'UNK'
     num_words = 0
     num_shapes = 0
@@ -124,8 +127,9 @@ if __name__ == '__main__':
         e2_contexts = read_feat_file(e2_context_file, unknown)
         num_e2_contexts = len(e2_contexts)
 
-    with open(label_file) as labs:
-        labels = {lab.strip(): i for i, lab in enumerate(labs, start=1)}
+    # with open(label_file) as labs:
+    #     labels = {lab.strip(): i for i, lab in enumerate(labs, start=0)}
+    labels = rela2id
 
     len_token_vec = num_words + num_clusters + num_shapes + num_embeddings
     feat_val = ':1.0'
@@ -137,11 +141,37 @@ if __name__ == '__main__':
             # the max length of all sentences
             max_rel_length = max([len(rec[1]) for rec in records])
             print('creating training file...')
+
+            feature_dim = len_token_vec * max_rel_length
+            row_num = len(records)
+
+            if not which_set:  # for pickle format output
+                if fire_e1_context:
+                    feature_dim += num_e1_contexts
+                if fire_e2_context:
+                    feature_dim += num_e2_contexts
+
+                pickle_matrix = np.zeros(
+                    (row_num, feature_dim))
+                pickle_label = np.zeros((row_num, ))
+
         elif 'test' in record_file:
             print('creating test file...')
 
+            feature_dim = len_token_vec * max_rel_length
+
+            if not which_set:  # for pickle format output
+                if fire_e1_context:
+                    feature_dim += num_e1_contexts
+                if fire_e2_context:
+                    feature_dim += num_e2_contexts
+
+                pickle_matrix = np.zeros(
+                    (row_num, feature_dim))
+                pickle_label = np.zeros((row_num, ))
+
         with open(out_file, 'w+') as lib_out:
-            for rec in records:
+            for idx, rec in enumerate(records):
                 sentence_feats = []
                 current_relation = rec[4]
                 sentence = rec[1]
@@ -245,3 +275,22 @@ if __name__ == '__main__':
                 # else:
                 #    lib_out.write('0 ')
                 lib_out.write(' '.join(i for i in sentence_feats if i) + '\n')
+
+                # output data into pickle
+                if not which_set:
+                    pickle_label[idx] = labels[current_relation]
+                    for feat in sentence_feats:
+                        if feat:
+                            feat_num, val = feat.split(':')
+                            pickle_matrix[idx, int(feat_num)] = val
+
+        if not which_set:  # for pickle format output
+            if 'train' in record_file:
+                print('dumping training pickle file...')
+                dump_bigger([pickle_matrix, pickle_label],
+                            '%strain_data.pkl' % models_dir)
+
+            elif 'test' in record_file:
+                print('dumping test pickle file...')
+                dump_bigger([pickle_matrix, pickle_label],
+                            '%stest_data.pkl' % models_dir)

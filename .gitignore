@@ -17,3 +17,8 @@ features
 *.model
 model
 models
+*.tar.gz
+*.zip
+*.rar
+output*.md
+result.md
