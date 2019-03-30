@@ -95,7 +95,8 @@ def create_record(txts, rel_idx: dict, ent_idx: dict) -> List[tuple]:
                         tokens[i] = ent_idx[token]
             tokens_with_punc = list(merge_punc(tokens))
             s_len = len(tokens_with_punc)
-            typ = info[0] + ' REVERSE' if info[1] else info[0]
+            # typ = info[0] + ' REVERSE' if info[1] else info[0]
+            typ = info[0]
             recs.append(tuple([abs_id, tokens_with_punc, e1, e2, typ, s_len]))
 
     return recs
