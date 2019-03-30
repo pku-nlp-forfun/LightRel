@@ -1,14 +1,8 @@
 import ast
 import sys
+
 from parameters import *
-
-
-def read_labels(file):
-    labs = {}
-    with open(file) as lbf:
-        for i, lab in enumerate(lbf, start=1):
-            labs[str(i)] = lab.strip()
-    return labs
+from util import *
 
 
 def read_record(file):
@@ -19,27 +13,30 @@ def read_record(file):
 if __name__ == '__main__':
     which_set = '' if sys.argv[1] == '0' else sys.argv[1]
     path_to_predictions = models_dir + 'predictions.txt'
-    path_to_labels = features_dir + 'labels.txt'
     path_to_test = features_dir + 'record_test' + which_set + '.txt'
-    labels = read_labels(path_to_labels)
     test_record = read_record(path_to_test)
-    relation_list = [(rec[2:5]) for rec in test_record]  # list of entities in order of test case
+    # list of entities in order of test case
+    relation_list = [(rec[2:5]) for rec in test_record]
 
-    with open(models_dir + 'answer_key.txt', 'w+') as key:
-        for rec in relation_list:
-            e1, e2, label = rec
-            label_split = label.split()
-            if len(label_split) == 2:
-                key.write(label_split[0] + '(' + e1 + ',' + e2 + ',REVERSE)' + '\n')
-            else:
-                key.write(label_split[0] + '(' + e1 + ',' + e2 + ')' + '\n')
+    result = [rela2id[ii[-1]] for ii in relation_list]
+    with open(path_to_predictions, 'r') as predicts:
+        prediction = [int(ii.strip()) for ii in predicts.readlines()]
+    p, r, f1, result_t = scoreSelf(prediction, result)
+    dump_bigger([p, r, f1, result_t],
+                '{}f1{}.pkl'.format(result_dir, which_set))
 
-    with open(path_to_predictions) as predicts, open(models_dir + 'predictions_with_labels.txt', 'w+') as out:
-        for i, pred in enumerate(predicts):
-            e1, e2, label = relation_list[i]
-            label_split = label.split()
-            actual = labels[pred.strip()]
-            if len(label_split) == 2:  # mistake; should have been len(actual) to get direction of predictions
-               out.write(actual.split()[0] + '(' + e1 + ',' + e2 + ',REVERSE)' + '\n')
-            else:
-               out.write(actual.split()[0] + '(' + e1 + ',' + e2 + ')' + '\n')
+    if which_set == '':
+        print('P = {:.4f}%, R = {:.4f}%, Aver F1 = {:.4f}%'.format(p, r, f1))
+        for ii, jj in enumerate(result_t):
+            tp, tr, tf1 = jj
+            print('{} P = {:.4f}%, R = {:.4f}%, Aver F1 = {:.4f}%'.format(
+                id2rela[ii], tp, tr, tf1))
+
+        # Generate report (also in average.py)
+        # K-fold validation
+        with open('result.md', 'a') as report:
+            report.write('## Average of test set ##\n\n')
+            report.write('Test F1|Test P|Test R\n')
+            report.write('-------|-----|-------\n')
+            report.write(' %.2f | %.2f | %.2f\n' %
+                         (f1*100, p*100, r*100))
