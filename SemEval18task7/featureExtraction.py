@@ -81,7 +81,10 @@ def create_record(txts, rel_idx: dict, ent_idx: dict) -> List[tuple]:
         for rel, info in rels.items():
             e1, e2 = rel
             rel_patt = e1 + r'(.*?)' + e2
-            rel_text_between = re.findall(rel_patt, txts[abs_id])[0]
+
+            rel_text_between = re.findall(
+                rel_patt, txts[abs_id].replace('\n', ''))[0]
+
             rel_text_full = e1 + rel_text_between + e2
             tokens = rel_text_full.split()
             # replace entity ids with actual entities

@@ -90,10 +90,11 @@ if __name__ == '__main__':
     # word_embds_file = features_dir + 'word2vec_abstracts.wcs.txt'  # acm + bdlp v10
     # word_embds_file = features_dir + 'word2vec_abstracts1.wcs.txt'  # dblp v5
     # word_embds_file = features_dir + 'dblp_abstracts.wcs.txt'  # dblp v10
-    word_embds_file = features_dir + 'fasttext_v5.txt'  # fasttext dblp v5
+    # word_embds_file = features_dir + 'fasttext_v5.txt'  # fasttext dblp v5
     # word_embds_file = features_dir + 'fasttext_acm.txt'  # fasttext dblp acm
-    # word_embds_file = features_dir + 'fasttext_v10.txt'  # fasttext dblp v10
+    word_embds_file = features_dir + 'fasttext_v10.txt'  # fasttext dblp v10
     # word_embds_file = features_dir + 'bert_acm.txt'  # bert acm test
+    # word_embds_file = features_dir + 'bert_v5.txt'  # bert dblp v5
 
     cluster_file = features_dir + 'dblp_marlin_clusters_1000'
     # cluster_file = features_dir + 'acm_marlin_clusters_1000'
@@ -152,13 +153,14 @@ if __name__ == '__main__':
                     feature_dim += num_e2_contexts
 
                 pickle_matrix = np.zeros(
-                    (row_num, feature_dim))
-                pickle_label = np.zeros((row_num, ))
+                    (row_num + 1, feature_dim + 1))
+                pickle_label = np.zeros((row_num + 1, ))
 
         elif 'test' in record_file:
             print('creating test file...')
 
             feature_dim = len_token_vec * max_rel_length
+            row_num = len(records)
 
             if not which_set:  # for pickle format output
                 if fire_e1_context:
@@ -167,8 +169,9 @@ if __name__ == '__main__':
                     feature_dim += num_e2_contexts
 
                 pickle_matrix = np.zeros(
-                    (row_num, feature_dim))
-                pickle_label = np.zeros((row_num, ))
+                    (row_num + 1, feature_dim + 1))
+                pickle_label = np.zeros((row_num + 1, ))
+        # print(row_num, feature_dim, num_e1_contexts, num_e2_contexts)
 
         with open(out_file, 'w+') as lib_out:
             for idx, rec in enumerate(records):
@@ -212,7 +215,7 @@ if __name__ == '__main__':
                                 shape_vec[4] = 1
                             if '_' in token:
                                 shape_vec[5] = 1
-                            if '"' in token:
+                            if "'s" in token:
                                 shape_vec[6] = 1
                             tup_vec = tuple(shape_vec)
                             feat_pos = offset + \
@@ -246,6 +249,7 @@ if __name__ == '__main__':
 
                     sentence_feats += token_feats
                 sent_offset = len(norm_sentence) * len_token_vec
+                # print(sent_offset)
                 if len(sentence) > 2:  # norm sentence not used to avoid padding elements
                     e1_context = sentence[1]
                     e2_context = sentence[-2]
@@ -271,18 +275,25 @@ if __name__ == '__main__':
                         sentence_feats.append(e2_feat)
 
                 # if 'train' in out_file:
-                lib_out.write(str(labels[current_relation]) + ' ')
+                try:
+                    lib_out.write(str(labels[current_relation]) + ' ')
+                    lib_out.write(
+                        ' '.join(i for i in sentence_feats if i) + '\n')
+                except:
+                    pass
                 # else:
                 #    lib_out.write('0 ')
-                lib_out.write(' '.join(i for i in sentence_feats if i) + '\n')
 
                 # output data into pickle
                 if not which_set:
-                    pickle_label[idx] = labels[current_relation]
-                    for feat in sentence_feats:
-                        if feat:
-                            feat_num, val = feat.split(':')
-                            pickle_matrix[idx, int(feat_num)] = val
+                    try:
+                        pickle_label[idx] = labels[current_relation]
+                        for feat in sentence_feats:
+                            if feat:
+                                feat_num, val = feat.split(':')
+                                pickle_matrix[idx, int(feat_num)] = val
+                    except:
+                        pass
 
         if not which_set:  # for pickle format output
             if 'train' in record_file:
