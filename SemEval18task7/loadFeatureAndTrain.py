@@ -10,6 +10,9 @@ from sklearn.tree import DecisionTreeClassifier
 from util import *
 from parameters import *
 
+import warnings
+warnings.filterwarnings('ignore')
+
 output_result = "output_result.md"
 
 
@@ -35,8 +38,11 @@ def kfoldAndTest(train_data, train_label, test_data, test_label, k=5):
         X_train, X_valid = train_data[train_index], train_data[valid_index]
         y_train, y_valid = train_label[train_index], train_label[valid_index]
         pred = classify(X_train, y_train, X_valid)
-        print('The %dth round result:')
+
+        print('The %dth round result:' % (i+1))
         tp, tr, tf1, result_list = scoreSelf(pred, y_valid)
+        print('P: {:.2f}, R: {:.2f}, F1: {:.2f}'.format(
+            tp*100, tr*100, tf1*100))
         p += tp
         r += tr
         f1 += tf1
@@ -87,6 +93,14 @@ def kfoldAndTest(train_data, train_label, test_data, test_label, k=5):
 
     print("Testing on test set...")
     prediction = classify(train_data, train_label, test_data)
+    with open('data/1.1.test.relations.txt', 'r') as f:
+        test = [ii.strip() for ii in f.readlines()]
+
+    result = [id2rela[ii] for ii in prediction]
+    result = [result[ii] + test[ii] for ii in range(len(result))]
+    with open('result.txt', 'w') as f:
+        f.write('\n'.join(result))
+
     f1, p, r, _ = scoreSelf(prediction, test_label)
 
     # Generate report (also in average.py)
@@ -102,8 +116,8 @@ def kfoldAndTest(train_data, train_label, test_data, test_label, k=5):
 def classify(train_data, train_label, test_data):
     # clf = SVC()
     # clf = LinearSVC()
-    # clf = LogisticRegression()
-    clf = DecisionTreeClassifier()
+    clf = LogisticRegression()
+    # clf = DecisionTreeClassifier()
 
     clf.fit(train_data, train_label)
     return clf.predict(test_data)
