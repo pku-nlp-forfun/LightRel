@@ -52,19 +52,14 @@ then
         echo "---converting sentences to vectors---"
         python3 sent2vec.py ${i}
 
-        # cd ${libLinDir}
-        echo "---training LibLinear model---"
-        train -s ${s} -c ${c} -e ${e} ${modelDir}"libLinearInput_train.txt" ${modelDir}${out_name}".model"
-        echo "---predicting on test set---"
-        predict ${modelDir}"libLinearInput_test.txt" ${modelDir}${out_name}".model" ${modelDir}"predictions.txt"
-
         cd ${mainDir}
         echo "---adding labels to LibLinear output---"
         python3 addLabels.py ${i}
 
     done
-    m=0
     python3 average.py
+
+    m=0
 
     echo "---competition run---"
     echo "---running feature extraction---"
