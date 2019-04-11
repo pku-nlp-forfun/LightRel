@@ -96,12 +96,12 @@ def kfoldAndTest(train_data, train_label, test_data, test_label, k=5):
     with open('data/1.1.test.relations.txt', 'r') as f:
         test = [ii.strip() for ii in f.readlines()]
 
-    result = [id2rela[ii] for ii in prediction]
-    result = [result[ii] + test[ii] for ii in range(len(result))]
-    with open('result.txt', 'w') as f:
-        f.write('\n'.join(result))
+    # result = [id2rela[ii] for ii in prediction]
+    # result = [result[ii] + test[ii] for ii in range(len(result))]
+    # with open('result.txt', 'w') as f:
+    #     f.write('\n'.join(result))
 
-    f1, p, r, _ = scoreSelf(prediction, test_label)
+    p, r, f1, _ = scoreSelf(prediction, test_label)
 
     # Generate report (also in average.py)
     # K-fold validation
