@@ -66,10 +66,14 @@ def pad_middle(sent: list, max_len: int):
     """ add padding elements (i.e. dummy word tokens) to fill the sentence to max_len """
     num_pads = max_len-len(sent)
     padding = num_pads * [None]
-    if before_e2:  # if add pedding before entity 2
-        return sent[:-1] + padding + [sent[-1]]  # max_len + 2 (entities)
-    else:  # add pedding before entity 1 (better performance)
-        return [sent[0]] + padding + sent[1:]  # max_len + 2 (entities)
+    if not before_e2:
+        return padding + sent
+    elif before_e2 == 1:
+        return [sent[0]] + padding + sent[1:]
+    elif before_e2 == 2:
+        return sent[:-1] + padding + [sent[-1]]
+    else:
+        return sent + padding
 
 
 if __name__ == '__main__':
@@ -96,8 +100,8 @@ if __name__ == '__main__':
     # word_embds_file = features_dir + 'bert_acm.txt'  # bert acm test
     # word_embds_file = features_dir + 'bert_v5.txt'  # bert dblp v5
 
-    cluster_file = features_dir + 'dblp_marlin_clusters_1000'
-    # cluster_file = features_dir + 'acm_marlin_clusters_1000'
+    # cluster_file = features_dir + 'dblp_marlin_clusters_1000'
+    cluster_file = features_dir + 'acm_marlin_clusters_1000'
     # word_embds_file = features_dir + 'acm_abstracts.wcs.txt'
 
     unknown = 'UNK'
