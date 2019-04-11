@@ -22,3 +22,6 @@ models
 *.rar
 output*.md
 result.md
+
+.vscode
+*.pkl
